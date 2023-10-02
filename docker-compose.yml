@@ -1,0 +1,79 @@
+version: '3'
+services:
+
+  #PHP Service
+  app_laravel-git:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: php:latest
+    container_name: app_laravel-git
+    restart: unless-stopped
+    tty: true
+    environment:
+      SERVICE_NAME: app_laravel-git
+      SERVICE_TAGS: dev
+    working_dir: /var/www
+    volumes:
+      - ./:/var/www
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    networks:
+      - app-network
+
+  #Nginx Service
+  webserver_laravel-git:
+    image: nginx:alpine
+    container_name: webserver_laravel-git
+    restart: unless-stopped
+    tty: true
+    environment:
+    - VIRTUAL_PORT=80
+    ports:
+      - "80:80"
+    volumes:
+      - ./:/var/www
+      - ./docker/nginx/conf.d/:/etc/nginx/conf.d/
+    networks:
+      - app-network
+
+  #MySQL Service
+  db_laravel-git:
+    image: mysql:5.7.22
+    container_name: db_laravel-git
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: laravel-git
+      MYSQL_USER: root
+      MYSQL_PASSWORD: root
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    volumes:
+      - dbdata:/var/lib/mysql/
+      - ./docker/mysql/my.cnf:/etc/mysql/my.cnf
+    networks:
+      - app-network
+
+  #phpmyadmin Service
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    depends_on:
+      - db_laravel-git
+    ports:
+      - "8080:80"
+    environment:
+       - PMA_ARBITRARY=1
+    networks:
+       - app-network
+
+#Docker Networks
+networks:
+  app-network:
+    driver: bridge
+#Volumes
+volumes:
+  dbdata:
+    driver: local
